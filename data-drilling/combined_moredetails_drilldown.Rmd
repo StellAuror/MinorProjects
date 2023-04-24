@@ -1,0 +1,167 @@
+### Libraries
+
+```{r}
+library(shiny)
+library(plotly)
+library(dplyr)
+library(readr)
+
+sales <- read_csv("https://plotly-r.com/data-raw/sales.csv")
+```
+
+### UI
+
+```{r}
+
+
+ui <- fluidPage(
+  fluidRow(
+    column(width = 8,
+             plotlyOutput("bars", height = 500)
+           ),
+    column(width = 4,
+            plotlyOutput("markers")
+            )
+  ),
+ 
+  uiOutput('back'),
+  uiOutput("back1"),
+  dataTableOutput("table")
+)
+```
+
+### Server
+
+```{r}
+server <- function(input, output, session) {
+  
+### OBSŁUGA WYBORU ZMIENNEJ ###
+# Przechowuje informacje o numerze słupka, który został wybrany
+  drills <- reactiveValues(category = NULL,
+                           sub_category = NULL,
+                           id = NULL)
+  
+# Dostarcza informacji o pobranym słupku
+  observeEvent(event_data("plotly_click", source = "bars"), {
+    x <- event_data("plotly_click", source = "bars")$x
+    if (!length(x))
+      return()
+    
+    if (!length(drills$category)) {
+      drills$category <- x
+    } else if (!length(drills$sub_category)) {
+      drills$sub_category <- x
+    } else {
+      drills$id <- x
+    }
+  })
+
+  
+### FILTROWANIE DANYCH ###
+# Filtrowanie danych zależnie od wybranych zmiennych
+  sales_data1 <- reactive({
+
+    if (is.null(drills$category)) {
+      return(mutate(sales, value = category))
+    }
+        
+    sales <- filter(sales, category %in% drills$category)
+    if (is.null(drills$sub_category)) {
+      return(mutate(sales, value = sub_category))
+    }
+  
+    sales <- filter(sales, sub_category %in% drills$sub_category)
+    mutate(sales, value = id)
+  })
+  
+  sales_data2 <- reactive({
+
+    if (is.null(drills$category)) {
+      return(mutate(sales, value = category))
+    }
+        
+    sales <- filter(sales, category %in% drills$category)
+    if (is.null(drills$sub_category)) {
+      return(mutate(sales, value = sub_category))
+    }
+  
+    sales <- filter(sales, sub_category %in% drills$sub_category)
+    if (is.null(drills$id)) {
+      return(mutate(sales, value = id))
+    }
+    sales <- filter(sales, id %in% drills$id)
+  })
+  
+### WYKRES LEWY ###
+  output$bars <- renderPlotly({
+
+    #Tworzenie Podstawki
+    d <- count(sales_data1(), value) # Tutaj wykorzystane jest filtrowanie danych z sales_data()
+    p <- plot_ly(d,
+                 x = ~ value,
+                 y = ~ n,
+                 source = "bars") %>%
+      layout(yaxis = list(title = "Total Sales"),
+             xaxis = list(title = ""))
+    
+    if (!length(drills$sub_category)) {
+      add_bars(p, color = ~ value) %>% layout(showlegend = F)
+    } 
+    else {
+      add_bars(p) 
+    } 
+  })
+  
+### WYKRES PRAWY ###
+  output$markers <- renderPlotly({
+    bep <- 
+      sales_data2() %>%
+      summarise(bep = mean(sales)) %>% as_vector()
+    
+    p <- 
+      sales_data2() %>%
+        mutate(bep = sales < bep) %>%
+        plot_ly(x = ~order_date, y = ~sales, color = ~bep)
+      
+    brush <- event_data("plotly_brushing", source = "bars")
+    if (is.null(brush)) return(p)
+    
+    p %>%
+      filter(between(sales_data2()$value, brush$x[1], brush$x[2])) %>%
+      add_markers(showlegend = F)
+  })
+  
+### TABELA ###
+  output$table <- renderDataTable({
+    sales_data1()
+  })
+
+# Sekcja przycisków powrotu 
+  output$back <- renderUI({
+    if (!is.null(drills$category) && is.null(drills$sub_category)) {
+      actionButton("clear", "Back", icon("chevron-left"))
+    }
+  })
+  
+  output$back1 <- renderUI({
+    if (!is.null(drills$sub_category)) {
+      actionButton("clear1", "Back", icon("chevron-left"))
+    }
+  })
+  
+  observeEvent(input$clear,
+               drills$category <- NULL)
+  observeEvent(input$clear1,
+               drills$sub_category <- NULL)
+  
+}
+```
+
+### RUN
+
+```{r}
+
+
+shinyApp(ui, server)
+
+```

@@ -1,0 +1,35 @@
+```{r}
+library(shiny)
+library(dplyr)
+library(plotly)
+
+ui <- fluidPage(
+  plotlyOutput("bars"),
+  dataTableOutput("click")
+)
+
+classes <- sort(unique(mpg$class))
+
+server <- function(input, output, session) {
+  
+  output$bars <- renderPlotly({
+    ggplot(mpg, aes(class, fill = drv, customdata = drv)) +
+      geom_bar()
+  })
+  
+  output$click <- renderDataTable({
+    # pobieranie danych z kliknięcia myszką
+    d <- event_data("plotly_click")
+    # jeżeli kliknięcie nie niesie ze sobą informacji - nic nie rób
+    if (is.null(d)) return(0)
+    
+    mpg %>%
+      filter(drv %in% d$customdata) %>%
+      filter(class %in% classes[d$x]) # filtrowanie za pomcoą danych z event_data, 
+                                      # x oznacza numer wybranej kolumny
+  })
+  
+}
+
+shinyApp(ui, server)
+```

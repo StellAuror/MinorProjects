@@ -1,0 +1,130 @@
+### UI
+
+```{r}
+library(shiny)
+library(plotly)
+library(dplyr)
+library(readr)
+
+sales <- read_csv("https://plotly-r.com/data-raw/sales.csv")
+categories <- unique(sales$category)
+sub_categories <- unique(sales$sub_category)
+ids <- unique(sales$id)
+
+ui <- fluidPage(
+
+  plotlyOutput("bars", height = 200),
+  uiOutput('back'),
+  uiOutput("back1")
+)
+
+```
+
+### Server
+
+```{r}
+server <- function(input, output, session) {
+
+  drills <- reactiveValues(category = NULL,
+                           sub_category = NULL,
+                           id = NULL)
+
+# Dynamicznie podstawiaw pod zmienną value wybrany parametr, zależnie od poziomu
+  sales_data <- reactive({
+    # POZIOM 1 - jeżeli kategoria jest niezerowa, value przyjmuje wartości z kategorii
+    # oraz kategorie są odpowiednio filtrowane (zgodnie z danymi w kliknięciu)
+    if (!length(drills$category)) {
+      return(mutate(sales, value = category))
+    }
+    sales <- filter(sales, category %in% drills$category)
+    
+    # POZIOM 2 - jeżeli podkategoria jest niezerowa, value przyjmuje wartości z podkategorii
+    # oraz podkategorie są odpowiednio filtrowane (zgodnie z danymi w kliknięciu)
+    if (!length(drills$sub_category)) {
+      return(mutate(sales, value = sub_category))
+    }
+    sales <- filter(sales, sub_category %in% drills$sub_category)
+    
+    # POZIOM 3 - value przyjmuje wartości ID
+    mutate(sales, value = id)
+  })
+  
+ 
+  output$bars <- renderPlotly({
+    # Bierze dane z sales_data i zlicza po wartościach oraz cenie
+    d <- count(sales_data(), value, wt = sales)
+   
+  # Podstawa wykresu, zawiera zliczenie (z funkcji wyżej) zmiennej value (dynamicznie dostosowywana w sales_data) 
+    p <- plot_ly(d,
+                 x = ~ value,
+                 y = ~ n,
+                 source = "bars") %>%
+      layout(yaxis = list(title = "Total Sales"),
+             xaxis = list(title = ""))
+    
+    if (!length(drills$sub_category)) {
+      add_bars(p, color = ~ value)
+    } 
+    
+    # Przechodzenie do POZIOM 2
+    else if (!length(drills$id)) {
+      add_bars(p) %>%
+        layout(hovermode = "x",
+               xaxis = list(showticklabels = FALSE))
+    } 
+    
+    # Dodawanie koloru dla wybranej (kliknięcie) kolumny POZIOM 3
+    else {
+      add_bars(p) %>%
+        filter(value %in% drills$id) %>%
+        add_bars(color = I("black")) %>%
+        layout(
+          hovermode = "x",
+          xaxis = list(showticklabels = FALSE),
+          showlegend = FALSE,
+          barmode = "overlay"
+        )
+    }
+  })
+
+  
+  # control the state of the drilldown by clicking the bar graph
+  observeEvent(event_data("plotly_click", source = "bars"), {
+    x <- event_data("plotly_click", source = "bars")$x
+    if (!length(x))
+      return()
+    
+    if (!length(drills$category)) {
+      drills$category <- x
+    } else if (!length(drills$sub_category)) {
+      drills$sub_category <- x
+    } else {
+      drills$id <- x
+    }
+  })
+  
+  output$back <- renderUI({
+    if (!is.null(drills$category) && is.null(drills$sub_category)) {
+      actionButton("clear", "Back", icon("chevron-left"))
+    }
+  })
+  
+  output$back1 <- renderUI({
+    if (!is.null(drills$sub_category)) {
+      actionButton("clear1", "Back", icon("chevron-left"))
+    }
+  })
+  
+  observeEvent(input$clear,
+               drills$category <- NULL)
+  observeEvent(input$clear1,
+               drills$sub_category <- NULL)
+  
+}
+```
+
+### Run App
+
+```{r}
+shinyApp(ui, server)
+```

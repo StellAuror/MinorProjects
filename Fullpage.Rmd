@@ -1,0 +1,314 @@
+```{r include=FALSE}
+library("shiny")
+library("bs4Dash")
+#library("argonDash")
+#library("argonR")
+library("fullPage")
+library("typedjs") 
+library("tidyverse")
+library("gapminder")
+library("echarts4r")
+
+```
+
+```{r include=FALSE}
+loremipsum <-
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque tristique est semper venenatis vulputate. Vestibulum id facilisis justo. Morbi porta semper auctor. Sed faucibus faucibus mollis. Suspendisse vel lorem et neque eleifend fringilla. Sed ullamcorper diam sed est pellentesque ultricies. Mauris non viverra ex, non commodo risus. Cras pellentesque ipsum arcu, id feugiat neque pretium ac. Morbi lectus velit, auctor ac vulputate non, pharetra eu libero. Integer pretium feugiat sagittis. Sed a purus id ligula venenatis faucibus eu at ligula. Nullam laoreet dolor mi, fermentum congue orci posuere vel. Mauris lobortis tristique nibh et placerat. Vivamus et ex imperdiet, finibus risus vitae, volutpat tellus.
+
+Sed posuere tellus nulla, quis laoreet nulla consectetur nec. Vestibulum a porttitor massa. Curabitur a diam sit amet nisl eleifend laoreet eget eget risus. Aenean ligula magna, condimentum in nulla eget, feugiat commodo diam. Praesent vel turpis a tortor tempus faucibus id non velit. Cras sed erat nulla. In neque ipsum, malesuada non tellus at, vulputate egestas eros.
+
+Donec ac sodales mi, at mollis justo. Duis laoreet id enim et rutrum. Fusce egestas, nunc id egestas porttitor, magna justo eleifend nunc, at condimentum tellus lectus rutrum elit. Maecenas congue dictum eleifend. Donec vitae finibus turpis, sit amet volutpat mi. Nunc at luctus quam. Quisque bibendum metus quis enim accumsan, tempor pellentesque ipsum tincidunt. Mauris dictum sollicitudin porta. Nullam a iaculis dui. Phasellus in ligula sapien. Donec in ipsum sit amet justo laoreet dictum.
+
+Duis vulputate sagittis mollis. Aenean bibendum, quam et interdum elementum, orci erat tincidunt enim, sed mattis est metus sit amet tortor. Aenean fringilla bibendum nunc nec dapibus. Suspendisse scelerisque, nisi eu laoreet sollicitudin, enim magna tincidunt libero, eget sollicitudin nulla ipsum sit amet leo. Nulla risus lorem, mollis sed cursus sed, euismod vel velit. Pellentesque vel quam quis orci euismod sagittis at tincidunt nulla. Donec massa est, ullamcorper sed tempus et, sodales quis elit.
+
+Donec vitae tincidunt libero. Aliquam tempor aliquam risus ac ultricies. Duis dignissim semper nulla sit amet finibus. Suspendisse id feugiat leo, eget ornare neque. Integer accumsan dictum diam, ut pellentesque massa vestibulum a. Mauris tempor, quam sed ornare ullamcorper, neque arcu scelerisque sapien, ac gravida tortor magna non tellus. In blandit est id porttitor aliquam. Sed faucibus faucibus odio, at luctus nulla fermentum eu. Pellentesque bibendum ullamcorper enim. Curabitur ac lacinia ante. Morbi ultricies elit quis sollicitudin interdum. Vivamus auctor diam in tellus lobortis tincidunt. Donec fringilla eros sed nisl molestie, non porttitor tortor viverra. Nam et elementum libero, sed feugiat arcu."
+```
+
+```{r}
+
+options <- list(
+  sectionsColor = c('#f2f2f2', '#333333', '#333333'),
+  parallax = TRUE
+)
+
+ui <- fullPage::fullPage(
+  menu = c("Welcome!" = "section1",
+           "Introduction" = "section2",
+           "Visualizations" = "section3",
+           "End" = "section4"),
+  opts = options,
+  
+###################################
+##### PAGE 1
+###################################
+  fullSection(
+    center = TRUE,
+    menu = "section1",
+    fullSlideImage(
+      img = paste0("https://images.unsplash.com/",
+                   "photo-1451187580459-43490279c0",
+                   "fa?ixlib=rb-1.2.1&ixid=MnwxMjA3",
+                   "fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fH",
+                   "x8&auto=format&fit=crop&w=1172&q=80"),
+      h1(typedOutput("title"), class = "header shadow-dark", style = 'color:white; font-weight: bold;')
+        
+    )
+  ),
+  
+  
+###################################
+##### PAGE 2
+################################### 
+  fullSection(
+    menu = "section2",
+    fullContainer(
+      h1("Title", style = 'color:white; font-weight: bold;'),
+      h2("subtitle", style = 'color:white; font-weight: bold;'),
+      p(loremipsum, style = 'color:white;')
+      
+    )
+  ),
+  
+###################################
+##### PAGE 3
+################################### 
+  fullSection(
+    menu = "section3",
+    fullSlide(
+       echarts4r::echarts4rOutput("plot1")
+    ),
+    fullSlide(
+       echarts4r::echarts4rOutput("plot2")
+    ),
+    fullSlide(
+       echarts4r::echarts4rOutput("plot3")
+    )
+  ),
+###################################
+##### PAGE 4
+###################################
+  fullSection(
+    menu = "section4",
+    fullContainer(
+      h3("Callbacks"),
+      p("Get callbacks on slide origin, destination, derection."),
+      p("Current slide:", verbatimTextOutput("slide"))
+    )
+  )
+)
+
+server <- function(input, output){
+  
+###################################
+##### PAGE 1
+###################################
+  output$title <- renderTyped({
+    typed(c("The R language visualization^500",
+            "Create your web-based report ^1000<br> easy visualizations with R"),
+          typeSpeed = 25, smartBackspace = TRUE)
+  })
+  
+###################################
+##### PAGE 2
+###################################
+  
+
+  
+###################################
+##### PAGE 3
+###################################
+  
+  output$plot1 <- echarts4r::renderEcharts4r({
+    
+    gapminder %>%
+      filter(year == 2007) %>%
+      group_by(continent) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      e_charts(x = continent) %>%
+        e_bar(serie = pop, smooth = TRUE, y_index = 0) %>%
+        e_tooltip(trigger = "axis") %>% # tooltip
+        e_line(serie = gdpPercap, smooth = TRUE, y_index = 1) %>%
+        e_axis_labels(x = "State") %>% # axis labels
+        e_title("Gapminder", "Population & Income") %>%  # Add title & subtitle
+        e_theme("infographic") %>%  # theme
+        e_legend(right = 0) %>%  # move legend to the bottom
+        e_theme_custom("myTheme.json")
+  })
+  
+  output$plot2 <- echarts4r::renderEcharts4r({
+    gapminder %>%
+      group_by(country) %>%
+      filter(year == 2007) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      e_charts(x = country) %>%
+        e_bar(serie = pop, smooth = TRUE, y_index = 0) %>%
+        e_tooltip(trigger = "axis") %>% # tooltip
+        e_line(serie = gdpPercap, smooth = F, y_index = 1) %>%
+        e_axis_labels(x = "State") %>% # axis labels
+        e_title("Gapminder", "Population & Income") %>%  # Add title & subtitle
+        e_theme("infographic") %>%  # theme
+        e_legend(right = 0) %>%  # move legend to the bottom
+        e_theme_custom("myTheme.json")
+  })
+  
+  output$plot3 <- echarts4r::renderEcharts4r({
+    gapminder %>%
+      group_by(continent, country) %>%
+      filter(year == 2007) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      group_by(continent) %>%
+      e_charts(x = country) %>%
+      e_line(serie = gdpPercap, smooth = F, y_index = 1) %>%
+      e_mark_point("gdpPercap", data = max) %>%
+      e_mark_point("gdpPercap", data = min) %>%
+      e_title("GDP Percap", "in 2007") %>%  # Add title & subtitle
+      e_mark_line(data = avg) %>%  # applies to all
+      e_tooltip(trigger = "axis") %>% # tooltip
+      e_theme_custom("myTheme.json")
+  })
+  
+###################################
+##### PAGE 4
+###################################
+  output$containerCode <- renderText({
+    "fullSlide(
+      fullContainer(...)
+    )"
+  })
+
+  output$slide <- renderPrint({
+    input$slide_origin
+  })
+  
+}
+
+shinyApp(ui, server)
+
+```
+
+```{r}
+    gapminder %>%
+      filter(year == 2007) %>%
+      group_by(continent) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      e_charts(x = continent) %>%
+        e_bar(serie = pop, smooth = TRUE, y_index = 0) %>%
+        e_tooltip(trigger = "axis") %>% # tooltip
+        e_line(serie = gdpPercap, smooth = TRUE, y_index = 1) %>%
+        e_axis_labels(x = "State") %>% # axis labels
+        e_title("Gapminder", "Population & Income in 2007") %>%  # Add title & subtitle
+        e_theme("infographic") %>%  # theme
+        e_legend(right = 0) %>%  # move legend to the bottom
+        e_theme_custom("myTheme.json")
+
+    
+    
+    gapminder %>%
+      group_by(country) %>%
+      filter(year == 2007) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      e_charts(x = country) %>%
+        e_bar(serie = pop, smooth = TRUE, y_index = 0) %>%
+        e_tooltip(trigger = "axis") %>% # tooltip
+        e_line(serie = gdpPercap, smooth = F, y_index = 1) %>%
+        e_axis_labels(x = "State") %>% # axis labels
+        e_title("Gapminder", "Population & Income in 2007") %>%  # Add title & subtitle
+        e_theme("infographic") %>%  # theme
+        e_legend(right = 0) %>%  # move legend to the bottom
+        e_theme_custom("myTheme.json")
+    
+    
+max <- list(
+  name = "Max",
+  type = "max"
+)
+
+min <- list(
+  name = "Min",
+  type = "min"
+)
+
+avg <- list(
+  type = "average",
+  name = "AVG"
+)
+
+  gapminder %>%
+      group_by(continent, country) %>%
+      filter(year == 2007) %>%
+      summarise(pop = sum(pop),
+                gdpPercap = mean(gdpPercap)) %>%
+      group_by(continent) %>%
+      e_charts(x = country) %>%
+      e_line(serie = gdpPercap, smooth = F, y_index = 1) %>%
+      e_mark_point("gdpPercap", data = max) %>%
+      e_mark_point("gdpPercap", data = min) %>%
+      e_title("GDP Percap", "in 2007") %>%  # Add title & subtitle
+      e_mark_line(data = avg) %>%  # applies to all
+      e_tooltip(trigger = "axis") %>%  # tooltip
+      e_theme_custom("myTheme.json")
+
+```
+
+```{r}
+
+ui <- fluidPage(
+  fluidRow(
+    column(3, echarts4rBoxOutput("box1")),
+    column(3, echarts4rBoxOutput("box2")),
+    column(3, echarts4rBoxOutput("box3")),
+    column(3, echarts4rBoxOutput("box4"))
+  )
+)
+
+server <- function(input, output){
+  output$box1 <- renderEcharts4rBox({
+    echarts4rBox(cars, speed, dist, "Cake", type = "bar")
+  })
+
+  output$box2 <- renderEcharts4rBox({
+    echarts4rBox(cars, speed, dist, "Pears", type = "area")
+  })
+
+  output$box3 <- renderEcharts4rBox({
+    echarts4rBox(cars, speed, dist, "More Cakes!", type = "step")
+  })
+
+  output$box4 <- renderEcharts4rBox({
+    echarts4rBox(cars, dist, speed, "Misc", type = "scatter", title_args = list(left = "right"))
+  })
+}
+
+shinyApp(ui, server)
+```
+
+```{r}
+plot_ly(x = c(.5, 6, 11.5), y = c(.5, 6, 11.5), size = c(1, 12, 1), type = 'scatter', mode = 'text', text = ~c(1:3),
+        textfont = list(color = '#ffffff')) %>%
+  layout(
+    images = list(
+      list(
+        source =  paste0("https://images.unsplash.com/",
+                   "photo-1451187580459-43490279c0",
+                   "fa?ixlib=rb-1.2.1&ixid=MnwxMjA3",
+                   "fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fH",
+                   "x8&auto=format&fit=crop&w=1172&q=80"),
+        xref = "x",
+        yref = "y",
+        x = 0,
+        y = 12,
+        sizex = 12,
+        sizey = 12,
+        sizing = "stretch",
+        opacity = .8,
+        layer = "below"
+      )
+    )
+  )
+
+```
