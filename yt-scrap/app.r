@@ -11,10 +11,10 @@ library(tm)
 library(qdap)
 library(wordcloud2)
 
-client_id <- "46555857347-n89srds26km677bfmf21fd0rjecqn9kp.apps.googleusercontent.com"
+client_id <- ""
 
-#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
-client_secret <- "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"
+
+client_secret <- "GOCSPX-"
 
 # use the youtube oauth 
 yt_oauth(app_id = client_id,
